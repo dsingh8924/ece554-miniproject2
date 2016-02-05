@@ -12,21 +12,12 @@ module display_plane(input clk,
 //ROM frame size is 80x60
 //pixel multiplication has to be done in this module as well
 
-reg [2:0] horz_cnt, vert_cnt; 
+reg [2:0] horz_cnt; 
 reg [12:0] curr_loc, horz_start;
 wire [12:0] horz_end;
-reg wr_fifo;
 
 localparam IDLE=1'b0, WRITE_FIFO=1'b1;
 reg st, nxt_st;
-
-/*
-always @(posedge clk, negedge rst_n) begin
-    if(!rst_n) begin
-    end else begin
-    end
-end
-*/
 
 assign addr_out = curr_loc;
 
@@ -41,17 +32,6 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
-/*
-always @(posedge clk, negedge rst_n) begin
-    if(!rst_n) begin
-        vert_cnt <= 3'b0;
-    end else begin
-        if((horz_cnt == 7) && (curr_loc == 4799))
-            vert_cnt <= vert_cnt +1;
-    end
-end
-*/
-
 assign horz_end = horz_start + 79;
 
 always @(posedge clk, negedge rst_n) begin
@@ -59,7 +39,10 @@ always @(posedge clk, negedge rst_n) begin
        horz_start <= 13'b0; 
     end else begin
         if((horz_cnt == 7) && (curr_loc == horz_end))
-            horz_start <= horz_start +80; 
+            if(curr_loc == 4799)
+                horz_start <= 0;
+            else
+                horz_start <= horz_start +80; 
     end
 end
 
@@ -90,7 +73,7 @@ read_mem = 1'b0;
 wr_en = 1'b0;
     case(st)
         IDLE:
-            if(!fifo_full) begin
+            if(fifo_empty) begin
                 read_mem = 1'b1;
                 nxt_st = WRITE_FIFO;
             end else begin
