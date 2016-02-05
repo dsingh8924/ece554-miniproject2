@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps
+`include "timescale.v"
 
 module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank, clk, clk_n, D, dvi_rst, scl_tri, sda_tri);
 
@@ -29,7 +29,7 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 												.CLK0_OUT(clk_100mhz_buf),
 												.LOCKED_OUT(locked_dcm)
 												);
-/*
+
 	dvi_ifc u_dvi(  .Clk(clk_25mhz),
                     .Reset_n(dvi_rst),
                     .SDA(sda),
@@ -38,7 +38,7 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
                     .IIC_xfer_done(),
                     .init_IIC_xfer (1'b0)
                 );
-*/
+
 	rom rom_vga(.addra(rom_addr),
 							.clka(clk_100mhz_buf),
 							.ena(rom_en),
