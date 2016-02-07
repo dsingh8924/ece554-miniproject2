@@ -23,14 +23,87 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 	assign sda_tri = (sda)? 1'bz: 1'b0;
 	assign scl_tri = (scl)? 1'bz: 1'b0;
 	
+        /*
+        //Hack for simulation
+        reg [1:0] sim_cnt;
+        always@(posedge clk_100mhz)
+            sim_cnt <= sim_cnt +1; //this will be forced to zero by the TB
+        assign clk_25mhz = sim_cnt[1];
+        assign locked_dcm = rst;
+        assign clk_100mhz_buf = clk_100mhz;
+        //Hack ends
+        */
+
 	clkgen clkgen_25mhz(.CLKIN_IN(clk_100mhz),
-												.RST_IN(rst_n),
-												.CLKDV_OUT(clk_25mhz),
-												.CLK0_OUT(clk_100mhz_buf),
-												.LOCKED_OUT(locked_dcm)
+			.RST_IN(rst),
+			.CLKDV_OUT(clk_25mhz),
+			.CLK0_OUT(clk_100mhz_buf),
+			.LOCKED_OUT(locked_dcm)
 												);
 
-	dvi_ifc u_dvi(  .Clk(clk_25mhz),
+
+/*
+	simple_rom rom_vga(.addr(rom_addr),
+		        .clk(clk_100mhz_buf),
+		        .rd_en(rom_en),
+		        .rdata(rom_data)
+		);
+                */
+	rom rom_vga(.addra(rom_addr),
+		.clka(clk_100mhz_buf),
+		.ena(rom_en),
+		.douta(rom_data)
+		);
+							
+	 display_plane display(.clk(clk_100mhz_buf),
+				.rst_n(!rst),
+				.addr_out(rom_addr), //to ROM
+				.read_mem(rom_en), //to ROM
+				.data_in(rom_data), //from ROM
+				.data_out(fifo_data_in), // to FIFO
+				.wr_en(fifo_wr_en), //to FIFO
+				.fifo_full(fifo_full), //from FIFO
+				.fifo_empty(fifo_empty) //from FIFO
+												);
+         /*
+         aFifo fifo(.Data_out(fifo_data_out),
+                    .Empty_out(fifo_empty),
+                    .ReadEn_in(fifo_rd_en),
+                    .RClk(clk_25mhz),
+                    .Data_in(fifo_data_in),
+                    .Full_out(fifo_full),
+                    .WriteEn_in(fifo_wr_en),
+                    .WClk(clk_100mhz_buf),
+                    .Clear_in(!rst)
+                    );
+         */
+         
+	fifo xclk_fifo(.rd_clk(clk_25mhz),
+		.wr_clk(clk_100mhz_buf),
+		.rst(rst),
+		.rd_en(fifo_rd_en),
+		.wr_en(fifo_wr_en),
+		.din(fifo_data_in),
+		.dout(fifo_data_out),
+		.full(fifo_full),
+		.empty(fifo_empty)
+						);
+
+         assign blank = fifo_rd_en;
+
+         timing_generator timegen(.clk(clk_25mhz),
+                                .rst_n(!rst),
+                                .fifo_empty(fifo_empty),
+                                .data_in(fifo_data_out),
+                                .fifo_read(fifo_rd_en),
+                                .pixel_r(pixel_r),
+                                .pixel_g(pixel_g),
+                                .pixel_b(pixel_b),
+                                .hsync(hsync),
+                                .vsync(vsync)
+                                );
+
+	dvi_ifc u_dvi(.Clk(clk_25mhz),
                     .Reset_n(dvi_rst),
                     .SDA(sda),
                     .SCL(scl),
@@ -38,32 +111,4 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
                     .IIC_xfer_done(),
                     .init_IIC_xfer (1'b0)
                 );
-
-	rom rom_vga(.addra(rom_addr),
-							.clka(clk_100mhz_buf),
-							.ena(rom_en),
-							.douta(rom_data)
-							);
-							
-	fifo xclk_fifo(.rd_clk(clk_25mhz),
-							.wr_clk(clk_100mhz_buf),
-							.rst(rst),
-							.rd_en(fifo_rd_en),
-							.wr_en(fifo_wr_en),
-							.din(fifo_data_in),
-							.dout(fifo_data_out),
-							.full(fifo_full),
-							.empty(fifo_empty)
-						);
-
-	 display_plane display(.clk(clk_100mhz_buf),
-												.rst_n(rst),
-												.addr_out(rom_addr), //to ROM
-												.read_mem(rom_en), //to ROM
-												.data_in(rom_data), //from ROM
-												.data_out(fifo_data_in), // to FIFO
-												.wr_en(fifo_wr_en), //to FIFO
-												.fifo_full(fifo_full), //from FIFO
-												.fifo_empty(fifo_empty) //from FIFO
-												);
 endmodule

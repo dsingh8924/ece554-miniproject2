@@ -1,3 +1,5 @@
+`include "timescale.v"
+
 module display_plane(input clk,
                     input rst_n,
                     output [12:0] addr_out, //to the ROM (ROM size is 4800, need 13 bits)
@@ -73,8 +75,8 @@ read_mem = 1'b0;
 wr_en = 1'b0;
     case(st)
         IDLE:
-            if(fifo_empty) begin
-                read_mem = 1'b1;
+            if(fifo_empty) begin //will this signal be high in the beginning?
+                //read_mem = 1'b1;
                 nxt_st = WRITE_FIFO;
             end else begin
                 nxt_st = IDLE;
@@ -83,6 +85,9 @@ wr_en = 1'b0;
             if(!fifo_full) begin
                 read_mem = 1'b1;
                 wr_en = 1'b1;
+                nxt_st = WRITE_FIFO;
+            end else begin
+                nxt_st = IDLE;
             end
     endcase
 end
