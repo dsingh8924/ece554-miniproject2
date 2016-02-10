@@ -23,15 +23,14 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 	assign sda_tri = (sda)? 1'bz: 1'b0;
 	assign scl_tri = (scl)? 1'bz: 1'b0;
 	
+        //USED FOR SIMULATION
         /*
-        //Hack for simulation
         reg [1:0] sim_cnt;
         always@(posedge clk_100mhz)
             sim_cnt <= sim_cnt +1; //this will be forced to zero by the TB
         assign clk_25mhz = sim_cnt[1];
         assign locked_dcm = rst;
         assign clk_100mhz_buf = clk_100mhz;
-        //Hack ends
         */
 
 	clkgen clkgen_25mhz(.CLKIN_IN(clk_100mhz),
@@ -39,9 +38,9 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 			.CLKDV_OUT(clk_25mhz),
 			.CLK0_OUT(clk_100mhz_buf),
 			.LOCKED_OUT(locked_dcm)
-												);
+                        );
 
-
+        //USED FOR SIMULATION
 /*
 	simple_rom rom_vga(.addr(rom_addr),
 		        .clk(clk_100mhz_buf),
@@ -64,7 +63,8 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 				.wr_en(fifo_wr_en), //to FIFO
 				.fifo_full(fifo_full), //from FIFO
 				.fifo_empty(fifo_empty) //from FIFO
-												);
+			        );
+        //USED FOR SIMULATION
          /*
          aFifo fifo(.Data_out(fifo_data_out),
                     .Empty_out(fifo_empty),
@@ -87,8 +87,9 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
 		.dout(fifo_data_out),
 		.full(fifo_full),
 		.empty(fifo_empty)
-						);
+		);
 
+         //the signal blank has the same functionality as the signal fifo_rd_en that we're using
          assign blank = fifo_rd_en;
 
          timing_generator timegen(.clk(clk_25mhz),
@@ -110,5 +111,5 @@ module top_level(clk_100mhz, rst, pixel_r, pixel_g, pixel_b, hsync, vsync, blank
                     .Done(),
                     .IIC_xfer_done(),
                     .init_IIC_xfer (1'b0)
-                );
+                    );
 endmodule

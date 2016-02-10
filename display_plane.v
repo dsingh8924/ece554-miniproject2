@@ -21,10 +21,13 @@ wire [12:0] horz_end;
 localparam IDLE=1'b0, WRITE_FIFO=1'b1;
 reg st, nxt_st;
 
+//address to the ROM is the same thing as current location
 assign addr_out = curr_loc;
 
+//data out is simply data coming in from the ROM as controlled by the state machine
 assign data_out = wr_en ? data_in : 1'bz;
 
+//3-bit counter for keeping track of horizontal replication (the image has to be repeated 8 times)
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
         horz_cnt <= 3'b0;
@@ -34,8 +37,9 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
-assign horz_end = horz_start + 79;
-
+//we'll read ROM in chunks of 80 location at a time
+//horz_start and horz_end are pointers to keep track of which horizontal line is being read
+//these are incremented by 80 whenever the 3-bit counter maxes out
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
        horz_start <= 13'b0; 
@@ -48,6 +52,11 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+assign horz_end = horz_start + 79;
+
+//keeping track of current location in memory
+//this pointer runs between horz_start and horz_end 8 times
+//controlled by the state machine signal - read_mem
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
         curr_loc <= 13'b0;
@@ -62,6 +71,7 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+//state machine
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
         st <= IDLE;
@@ -75,13 +85,15 @@ read_mem = 1'b0;
 wr_en = 1'b0;
     case(st)
         IDLE:
-            if(fifo_empty) begin //will this signal be high in the beginning?
-                //read_mem = 1'b1;
+            //whenver FIFO becomes empty, the state machine kicks off to the WRITE_FIFO state
+            if(fifo_empty) begin
+                //read_mem = 1'b1; //This was causing a really interesting bug
                 nxt_st = WRITE_FIFO;
             end else begin
                 nxt_st = IDLE;
             end
         WRITE_FIFO:
+            //FIFO is written until it becomes full after which state machine waits for it to become empty in the IDLE state
             if(!fifo_full) begin
                 read_mem = 1'b1;
                 wr_en = 1'b1;

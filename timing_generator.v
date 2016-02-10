@@ -17,6 +17,8 @@ reg [2:0] horz_st, horz_nxt_st, vert_st, vert_nxt_st;
 reg [9:0] horz_cnt, vert_cnt;
 reg inc_vert;
 
+//counter for tracking the horizontal line running at 25MHz
+//runs only if FIFO is not empty
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
         horz_cnt <= 10'b0;
@@ -28,6 +30,8 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+//counter for tracking the vertical line
+//controlled by the state machine, is incremented once a horizontal line completes
 always @(posedge clk, negedge rst_n) begin
     if(!rst_n) begin
         vert_cnt <= 10'b0;
@@ -39,6 +43,7 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+//fifo read and pixel value signals controlled by the state machine states
 assign fifo_read = (horz_st == ACTIVE && vert_st == ACTIVE) ? 1'b1 : 1'b0;
 assign pixel_r = (horz_st == ACTIVE && vert_st == ACTIVE) ? data_in[23:16] : 8'b0;
 assign pixel_g = (horz_st == ACTIVE && vert_st == ACTIVE) ? data_in[15:8] : 8'b0;
@@ -52,11 +57,13 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+//horizontal line state machine
 always @(*) begin
 hsync = 1'b1;
 inc_vert = 1'b0;
     case (horz_st)
         IDLE:
+            //kicks off when fifo becomes non-empty
             if(!fifo_empty) begin
                 horz_nxt_st = FRONT_PORCH;
             end else begin
@@ -72,6 +79,7 @@ inc_vert = 1'b0;
             if(horz_cnt == 111) begin //96 cycles
                 horz_nxt_st = BACK_PORCH;
             end else begin
+                //hsync is asserted here
                 hsync = 1'b0;
                 horz_nxt_st = SYNC;
             end
@@ -83,6 +91,7 @@ inc_vert = 1'b0;
             end
         ACTIVE:
             if(horz_cnt == 799) begin //640 cycles
+                //increment vertical count
                 inc_vert = 1'b1;
                 horz_nxt_st = FRONT_PORCH;
             end else begin
@@ -99,6 +108,7 @@ always @(posedge clk, negedge rst_n) begin
     end
 end
 
+//vertical line state machine
 always @(*) begin
 vsync = 1'b1;
     case (vert_st)
@@ -118,11 +128,12 @@ vsync = 1'b1;
             if(vert_cnt == 11) begin //2 cycles
                 vert_nxt_st = BACK_PORCH;
             end else begin
+                //vsync is asserted here
                 vsync = 1'b0;
                 vert_nxt_st = SYNC;
             end
         BACK_PORCH:
-            if(vert_cnt == 44) begin //45 cycles
+            if(vert_cnt == 44) begin //33 cycles
                 vert_nxt_st = ACTIVE;
             end else begin
                 vert_nxt_st = BACK_PORCH;
